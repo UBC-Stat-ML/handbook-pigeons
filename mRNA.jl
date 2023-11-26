@@ -23,23 +23,39 @@ function start_job(; n_chains, n_rounds)
         )
 end
 
-function make_pp(r)
-    pt = load(r)
-    samples = Chains(pt)
-    my_plot = PairPlots.pairplot(samples) 
-    CairoMakie.save("pair_plot.pdf", my_plot)
+function toy()
+    pigeons(;
+        target = toy_mvn_target(2),
+        record = [traces; round_trip; record_default()],
+        checkpoint = true,
+        on = ChildProcess(
+                dependencies = [BridgeStan])
+        )
 end
 
-# function hack(n_chains)
-#     setup_mpi(
-#         submission_system = :slurm,
-#         environment_modules = ["gcc", "openmpi", "git"],
-#         add_to_submission = [
-#             "#SBATCH -A st-alexbou-1",
-#             "#SBATCH --nodes=1-10000"
-#         ], 
-#         library_name = "/arc/software/spack-2023/opt/spack/linux-centos7-skylake_avx512/gcc-9.4.0/openmpi-4.1.1-d7o6cdvp67ngi5c5wdcw2qyjyseq3l3o/lib/libmpi"
-#     )
-# end
+function make_plots(r)
+    pt = load(r)
+    samples = Chains(pt)
 
-nothing
+    CairoMakie.save(
+        "$(r.exec_folder)/pair_plot.pdf", 
+        PairPlots.pairplot(samples))
+
+    StatsPlots.savefig(
+        StatsPlots.plot(samples), 
+        "$(r.exec_folder)/posterior_densities_and_traces.pdf")
+
+    params, internals = MCMCChains.get_sections(samples)
+
+    StatsPlots.savefig(
+        StatsPlots.plot(internals), 
+        "$(r.exec_folder)/logdensity.pdf");
+
+    StatsPlots.savefig(
+        meanplot(samples), 
+        "$(r.exec_folder)/meanplot.pdf")
+
+    StatsPlots.savefig(
+        autocorplot(samples), 
+        "$(r.exec_folder)/autocorplot.pdf")
+end
